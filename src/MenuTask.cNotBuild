@@ -1,0 +1,291 @@
+/*
+ * UARTTask.c
+ *
+ *  Created on: Oct 10, 2023
+ *      Author: manhh
+ */
+#include "MenuTask.h"
+#include "main.h"
+Select_menu Choice_func;
+
+Menu_Option main_menu[] =
+
+	{
+		{1, " Control Led", ControlLed, 0, 0},
+		{2, " Date Time", DateTime, 1, 0},
+		{3, " More Option", MoreOption, 1, 0},
+		{4, " Unit Circle", DrawUnitCircle, 0, 0},
+		{5, " Pulse ", DrawPWM, 0, 0},
+		{6, " Run word", RunString, 0, 0},
+		{7, " Draw Sine Wave", DrawSineWave, 0, 0},
+		{8, " Draw char", DrawWordFromKeyboard, 0, 0},
+		{9, " Clock", ShowClock, 0, 0},
+};
+static const size_t quantity_selections =
+	sizeof(main_menu) / sizeof(main_menu[0]);
+
+// Menu_Option menu_s1[] =
+//{
+//	{1, " On Led", OnLed,0},
+//	{2, " Off Led", OffLed,0},
+//	{3, " Toogle Led", ToogleLed,0},
+//
+// };
+Menu_Option menu_s2[] =
+	{
+		{1, " Get Date Time", GetTime, 0, 0},
+		{2, " Set Date", SetDate, 0, 0},
+		{3, " Set Time", SetTime, 0, 0},
+		{4, " More Option", MoreOption, 1, 0},
+		{5, " Control Led", ControlLed, 1, 0},
+		{6, " Run word", RunString, 0, 0},
+};
+Menu_Option menu_s3[] =
+	{
+		{1, " Draw Sine Wave", DrawSineWave, 0, 0},
+		{2, " Draw char", DrawWordFromKeyboard, 0, 0},
+		{3, " Clock", ShowClock, 0, 0},
+		{4, " Adjust Brightness", AdjustBrightness, 0, 0},
+};
+
+// static const size_t quantity_selections_menu1 =
+// sizeof(menu_s1) / sizeof(menu_s1[0]);
+static const size_t quantity_selections_menu2 =
+	sizeof(menu_s2) / sizeof(menu_s2[0]);
+static const size_t quantity_selections_menu3 =
+	sizeof(menu_s3) / sizeof(menu_s3[0]);
+
+void DateTime()
+{
+	process_data(quantity_selections_menu2, menu_s2, "   Date Time Option ");
+};
+void MoreOption()
+{
+	process_data(quantity_selections_menu3, menu_s3, "      More Option ");
+}
+/*
+void DisplaySelection(size_t quantilyty,Menu_Option Menu[])
+	If selection > size of menu, selection =1 and selection < 1 , selection = size menu.
+	Black out selection
+	Scrolling Menu: if size of menu > size of LCD and selection > size of LCD, lcd is scrolling
+	- quantilyty: size of menu
+	- Menu[]: array contains elements of menu
+*/
+void DisplaySelection(size_t quantilyty, Menu_Option Menu[])
+{
+	//+
+	int color;
+	int ratio = (64 - 12) / (quantilyty + 1);
+	for (size_t i = 0; i < quantilyty; i++)
+	{
+
+		if (Choice_func.select >= quantilyty + 1)
+		{ //
+			Choice_func.select = 1;
+		}
+		if (Choice_func.select < 1)
+		{
+			Choice_func.select = quantilyty;
+		}
+		if (Choice_func.select - 1 != i)
+		{
+			color = 1;
+		}
+		else
+		{
+			LCD_drawRectangleFill(&LCD1, 1, 0, SPACE_LINE * (i + 2) - 2, COLUMN_NUMB - MARGIN_LCD, SPACE_LINE);
+			color = 0;
+		}
+		DrawFunction(color, i, Menu);
+		LCD_drawRectangleFill(&LCD1, 1, COLUMN_NUMB - 5, 14, 3, (MAX_NUMB_LINE + 1) * ratio);
+	}
+	// scroll menu
+
+	if (Choice_func.select > MAX_NUMB_LINE)
+	{
+		//		LCD_drawRectangleFill(&LCD1, 1, 0, SPACE_LINE*(Choice_func.select-MAX_NUMB_LINE+2)-2, COLUMN_NUMB-MARGIN_LCD, SPACE_LINE);
+		LCD_drawRectangleFill(&LCD1, 0, 0, 15, COLUMN_NUMB, ROW_NUMB - 15);
+		for (int j = 0; j < 5; j++)
+		{
+			if (j + Choice_func.select - MAX_NUMB_LINE > quantilyty - 1)
+				LCD_drawString(&LCD1, 1, 10, SPACE_LINE * (j + 2), 3, Menu[0].p_selection_text);
+			else
+				LCD_drawString(&LCD1, 1, 10, SPACE_LINE * (j + 2), 3, Menu[j + Choice_func.select - MAX_NUMB_LINE].p_selection_text);
+		}
+		LCD_drawRectangleFill(&LCD1, 1, 0, SPACE_LINE * (MAX_NUMB_LINE + 1) - 1, COLUMN_NUMB - MARGIN_LCD, SPACE_LINE);
+		LCD_drawString(&LCD1, 0, 10, SPACE_LINE * (MAX_NUMB_LINE + 1), 3, Menu[Choice_func.select - 1].p_selection_text);
+		LCD_drawRectangleFill(&LCD1, 1, COLUMN_NUMB - 5, 14 + (Choice_func.select - MAX_NUMB_LINE) * ratio, 3, (MAX_NUMB_LINE + 1) * ratio);
+	}
+
+	LCD_drawRectangle(&LCD1, 1, 0, 1, 192, 63);
+	LCD_drawVLine(&LCD1, 1, 185, 14, 64);
+}
+void DrawFunction(uint8_t Color, size_t Line, Menu_Option Menu[])
+{
+	char strNum[4];
+
+	LCD_drawString(&LCD1, Color, MARGIN_LCD, SPACE_LINE * (Line + 2) - 1, 3, Menu[Line].p_selection_text);
+	//	if(Noti.numError!=0&&Noti.numMess!=0){
+	if (Menu[Line].numNoti != 0)
+	{
+		sprintf(strNum, "%d", *Menu[Line].numNoti);
+		LCD_drawString(&LCD1, Color, COLUMN_NUMB - 3 * MARGIN_LCD, SPACE_LINE * (Line + 2) - 1, 3, strNum);
+	}
+}
+/*
+void ShowMenuDisplay(size_t quantilyty, Menu_Option Menu[], const char* MenuName);
+	Display menu on lcd
+	- quantilyty: size of menu
+	- Menu[]: array contains elements of menu
+	- MenuName: Name of menu
+*/
+void ShowMenuDisplay(const char *MenuName)
+{
+	//
+	// Show Menu Name
+	LCD_clearAll(&LCD1);
+	LCD_drawLine(&LCD1, 1, 0, 2, COLUMN_NUMB, 2);
+	LCD_drawString(&LCD1, 1, 0, 5, 1, (char *)MenuName);
+	LCD_drawLine(&LCD1, 1, 0, 14, COLUMN_NUMB, 14);
+}
+/*
+void ProcessFunction(size_t quantilyty, Menu_Option Menu[])
+	Check function or menu and process. Refresh LCD after 50ms and LCD_buffer is changed
+	- quantilyty: size of menu
+	- Menu[]: array contains elements of menu
+*/
+void ProcessFunction(size_t quantilyty, Menu_Option Menu[])
+{
+	for (size_t i = 0; i < quantilyty; ++i)
+	{
+
+		if (Choice_func.choice == Menu[i].choice)
+		{
+
+			Menu_Processing_Function_Pointer p_function = Menu[i].p_processing_function;
+			LCD_clearAll(&LCD1);
+			if (Menu[i].func == 0)
+			{ // Call function
+				while (Choice_func.back == 0)
+				{
+					ReadInput();
+					currentTime = HAL_GetTick();
+					(p_function)();
+					if ((currentTime - lastTime) > 50 && changeData == 1)
+					{
+						LCD_refesh(&LCD1);
+						lastTime = currentTime;
+					}
+				}
+				Choice_func.back = 0;
+			}
+			else
+			{
+				p_function(); // Call menu
+			}
+		}
+	}
+}
+/*
+void process_data(size_t quantilyty, Menu_Option Menu[], const char* MenuName);
+	- Init Menus, if no input from the keyboard after 30s then turn of led LCD, process function
+	- quantilyty: size of menu
+	- Menu[]: array contains elements of menu
+	- MenuName: Name of menu
+*/
+void process_data(size_t quantilyty, Menu_Option Menu[], const char *MenuName)
+{
+	Pointer.x0 = 0;
+	Choice_func.choice = 0;
+
+	for (;;)
+	{
+		ReadInput();
+		ShowMenuDisplay(MenuName);
+		DisplaySelection(quantilyty, Menu);
+
+		currentTime = HAL_GetTick();
+		LCD_refesh(&LCD1);
+		HAL_Delay(50);
+
+		// Auto turn off led LCD
+
+		if (Choice_func.back == 0)
+		{
+			//
+			ProcessFunction(quantilyty, Menu);
+		}
+		else
+		{
+			Choice_func.back = 0;
+			break;
+		}
+
+		if (Noti.numError + Noti.numMess != 0 && seenNoti == 0)
+		{
+			for (int i = 0; i < 1; i++)
+			{
+				TIM4->CCR1 = 65530;
+				HAL_Delay(300);
+				TIM4->CCR1 = 0;
+				HAL_Delay(300);
+			}
+			break;
+		}
+		if (currentTime - lastTime > 30000)
+		{
+			TIM4->CCR1 = 65530;
+		}
+	}
+}
+
+/*
+MenuTask();
+	- Init Main Menu
+*/
+
+void MenuTask()
+{
+	process_data(quantity_selections, main_menu, "        Main Menu   ");
+}
+/*
+ReadInput()();
+	- Read input from keyboard
+	- 'w' to up
+	- 's' to down
+	- 'Enter" to choice
+	- 'esc' to back
+*/
+void ReadInput()
+{
+	if (rx_data[0] != '\0')
+	{
+		TIM4->CCR1 = Brightness;
+		lastTime = currentTime;
+	}
+	switch (rx_data[0])
+	{
+	case 'w':
+		Choice_func.select = Choice_func.select - 1;
+		rx_data[0] = '0';
+		break;
+	case 's':
+		Choice_func.select = Choice_func.select + 1;
+		rx_data[0] = '0';
+		break;
+	case '\n':
+		Choice_func.choice = Choice_func.select;
+		Choice_func.select = 1;
+		rx_data[0] = '0';
+		break;
+	case '\e':
+		Choice_func.back = 1;
+		Choice_func.choice = 0;
+		Choice_func.select = 1;
+		rx_data[0] = '0';
+		break;
+	default:
+		CheckNoti();
+		break;
+	}
+}

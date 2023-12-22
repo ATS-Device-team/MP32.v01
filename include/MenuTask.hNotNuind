@@ -1,0 +1,55 @@
+/*
+ * MENUTask.h
+ *
+ *  Created on: Oct 10, 2023
+ *      Author: manhh
+ */
+
+#ifndef INC_MENUTASK_H_
+#define INC_MENUTASK_H_
+
+#define SPACE_LINE 				10
+#define MAX_NUMB_LINE			4
+#define MARGIN_LCD					10
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+typedef void (*Menu_Processing_Function_Pointer)(void);
+typedef struct
+{
+int choice;
+int select;
+int back;
+}Select_menu;
+
+extern Select_menu Choice_func;
+
+typedef struct
+{
+	int choice;													//numerical order
+	char * p_selection_text;									//Option name
+	Menu_Processing_Function_Pointer p_processing_function;		//Function
+	int func; 													// 0: function, 1: menu
+	int* numNoti;
+}Menu_Option;
+
+
+
+extern int back;
+
+//extern int choice1;
+
+void ControlLed();
+void DateTime();
+void ShowMenuDisplay( const char* MenuName);
+void ProcessFunction(size_t quantilyty, Menu_Option Menu[]);
+void DisplaySelection(size_t quantilyty,Menu_Option Menu[]);
+void DrawFunction(uint8_t Color,size_t Line,Menu_Option Menu[]);
+extern void ReadInput();
+void MoreOption();
+void process_data(size_t quantilyty, Menu_Option Menu[], const char* MenuName);
+
+
+void MenuTask();
+#endif /* INC_MENUTASK_H_ */
