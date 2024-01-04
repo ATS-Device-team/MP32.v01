@@ -13,5 +13,9 @@
 #define BUTTON2 34
 #define BUTTON3 36
 #define BUTTON4 39
+#define IO_CS 15
+#define IO_SCLK 14
+#define IO_MOSI 13
+#define IO_MISO 12
 
 #endif

@@ -11,6 +11,11 @@
 #define LCD_LIGHT_OFF_TIME 60
 
 LiquidCrystal_I2C LCD(PCF8574_ADDR_A20_A10_A00, 4, 5, 6, 16, 11, 12, 13, 14, POSITIVE);
+#if (USE_SHIFTIO_SOFT_SPI == 1)
+ShiftIO muxIO(IO_CS, IO_SCLK, IO_MOSI, IO_MISO);
+#else
+ShiftIO muxIO(HSPI, 2E6, IO_CS, IO_SCLK, IO_MOSI, IO_MISO);
+#endif
 uint8_t LCD_light_tick = 0;
 uint32_t WIFI_task_runTime = 0, LCD_task_runTime = 0, IO_task_runTime = 0;
 
@@ -29,7 +34,7 @@ void WIFI_task_code(void *pvParameters)
             wifi_saveInfor();
     for (;;)
     {
-        uint32_t current = millis();
+        uint32_t current = micros();
         if (WiFi.status() != WL_CONNECTED)
         {
             bestWifi = wifi_scan();
@@ -37,7 +42,7 @@ void WIFI_task_code(void *pvParameters)
                 if (wifi_connect(wifiInfor_list[bestWifi].ssid.c_str(), wifiInfor_list[bestWifi].password.c_str()))
                     wifi_saveInfor();
         }
-        WIFI_task_runTime += (int32_t)millis() - (int32_t)current;
+        WIFI_task_runTime += (int32_t)micros() - (int32_t)current;
 
         delay(500);
     }
@@ -58,7 +63,7 @@ void LCD_task_code(void *pvParameters)
 
     for (;;)
     {
-        uint32_t current = millis();
+        uint32_t current = micros();
         LCD.setCursor(9, 0);
         LCD.printf("%us", millis() / 1000);
         LCD.setCursor(5, 1);
@@ -86,7 +91,7 @@ void LCD_task_code(void *pvParameters)
         }
         else
             LCD.noBacklight();
-        LCD_task_runTime += (int32_t)millis() - (int32_t)current;
+        LCD_task_runTime += (int32_t)micros() - (int32_t)current;
 
         delay(500);
     }
@@ -100,10 +105,12 @@ void IO_Task_code(void *pvParameters)
     pinMode(BUTTON2, INPUT);
     pinMode(BUTTON3, INPUT);
     pinMode(BUTTON4, INPUT);
+    muxIO.begin(4, 4);
+    muxIO.setOutputPort(0, 0x01);
 
     for (;;)
     {
-        uint32_t current = millis();
+        uint32_t current = micros();
         if (digitalRead(BUTTON1) == 0)
         {
             delay(200);
@@ -133,11 +140,16 @@ void IO_Task_code(void *pvParameters)
             delay(200);
             while (digitalRead(BUTTON3) == 0)
                 delay(10);
-            ESP.restart();
+            LCD_light_tick = 0;
         }
-        IO_task_runTime += (int32_t)millis() - (int32_t)current;
+        muxIO.setOutputPort(0, (uint8_t)muxIO.getInputPort(0));
+        muxIO.setOutputPort(1, (uint8_t)muxIO.getInputPort(1));
+        muxIO.setOutputPort(2, (uint8_t)muxIO.getInputPort(2));
+        muxIO.setOutputPort(3, (uint8_t)muxIO.getInputPort(3));
+        muxIO.transfer();
+        IO_task_runTime += (int32_t)micros() - (int32_t)current;
 
-        delay(200);
+        delay(50);
     }
 }
 

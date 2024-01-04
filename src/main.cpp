@@ -70,27 +70,27 @@ void setup()
 
 void loop()
 {
-  uint32_t idleTime = 1000 - WIFI_task_runTime - LCD_task_runTime - IO_task_runTime - LOOP_task_runTime;
+  uint32_t idleTime = 1E6 - WIFI_task_runTime - LCD_task_runTime - IO_task_runTime - LOOP_task_runTime;
 
-  uint32_t current = millis();
-  WIFI_task_useage_percent = (WIFI_task_runTime / 1000.0) * 100.0;
-  LCD_task_useage_percent = (LCD_task_runTime / 1000.0) * 100.0;
-  IO_task_useage_percent = (IO_task_runTime / 1000.0) * 100.0;
-  LOOP_task_useage_percent = ((LOOP_task_runTime + idleTime) / 1000.0) * 100.0;
+  uint32_t current = micros();
+  WIFI_task_useage_percent = (WIFI_task_runTime / 1000000.0) * 100.0;
+  LCD_task_useage_percent = (LCD_task_runTime / 1000000.0) * 100.0;
+  IO_task_useage_percent = (IO_task_runTime / 1000000.0) * 100.0;
+  LOOP_task_useage_percent = ((LOOP_task_runTime + idleTime) / 1000000.0) * 100.0;
   Serial.printf("\r\n\r\n\r\n");
-  Serial.printf("WIFI task runtime: %umS\r\n", WIFI_task_runTime);
-  Serial.printf("LCD task runtime: %umS\r\n", LCD_task_runTime);
-  Serial.printf("IO task runtime: %umS\r\n", IO_task_runTime);
-  Serial.printf("LOOP task runtime: %umS\r\n", LOOP_task_runTime + idleTime);
-  Serial.printf("WIFI task useage: %.2f\%\r\n", WIFI_task_useage_percent);
-  Serial.printf("LCD task useage: %.2f\%\r\n", LCD_task_useage_percent);
-  Serial.printf("IO task useage: %.2f\%\r\n", IO_task_useage_percent);
-  Serial.printf("LOOP task useage: %.2f\%\r\n", LOOP_task_useage_percent);
-  
+  Serial.printf("WIFI task runtime: %u uS\r\n", WIFI_task_runTime);
+  Serial.printf("LCD task runtime: %u uS\r\n", LCD_task_runTime);
+  Serial.printf("IO task runtime: %u uS\r\n", IO_task_runTime);
+  Serial.printf("LOOP task runtime: %u uS\r\n", LOOP_task_runTime + idleTime);
+  Serial.printf("WIFI task useage: %.2f%%\r\n", WIFI_task_useage_percent);
+  Serial.printf("LCD task useage: %.2f%%\r\n", LCD_task_useage_percent);
+  Serial.printf("IO task useage: %.2f%%\r\n", IO_task_useage_percent);
+  Serial.printf("LOOP task useage: %.2f%%\r\n", LOOP_task_useage_percent);
+
   WIFI_task_runTime = 0;
   LCD_task_runTime = 0;
   IO_task_runTime = 0;
-  LOOP_task_runTime = (int32_t)millis() - (int32_t)current;
+  LOOP_task_runTime = (int32_t)micros() - (int32_t)current;
 
-  delay(idleTime);
+  delay((idleTime & 0xFFFFF) / 1000);
 }

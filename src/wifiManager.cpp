@@ -27,6 +27,8 @@ void wifi_loadInfor(void)
     if (errorJson)
     {
         APssid = AP_SSID_DEFAULT;
+        APssid += " ";
+        APssid += WiFi.macAddress();
         APpassword = AP_PASSWORD_DEFAULT;
     }
     else
@@ -46,6 +48,9 @@ void wifi_loadInfor(void)
         }
     }
     file.close();
+    debugSerial.println("Load wifi infor:");
+    serializeJsonPretty(jsdoc, debugSerial);
+    debugSerial.println();
 }
 
 void wifi_saveInfor(void)
@@ -70,6 +75,9 @@ void wifi_saveInfor(void)
     }
     serializeJson(jsdoc, file);
     file.close();
+    debugSerial.println("Save wifi infor:");
+    serializeJsonPretty(jsdoc, debugSerial);
+    debugSerial.println();
 }
 
 int wifi_scan(void)
@@ -156,6 +164,8 @@ bool wifi_connect(String ssid, String password)
 void wifi_default(void)
 {
     APssid = AP_SSID_DEFAULT;
+    APssid += " ";
+    APssid += WiFi.macAddress();
     APpassword = AP_PASSWORD_DEFAULT;
     staWifiIndex = -1;
     for (uint8_t i = 0; i < WIFI_BUF_NUMBS; i++)
