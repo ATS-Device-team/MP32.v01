@@ -142,10 +142,14 @@ void IO_Task_code(void *pvParameters)
                 delay(10);
             LCD_light_tick = 0;
         }
-        muxIO.setOutputPort(0, (uint8_t)muxIO.getInputPort(0));
-        muxIO.setOutputPort(1, (uint8_t)muxIO.getInputPort(1));
-        muxIO.setOutputPort(2, (uint8_t)muxIO.getInputPort(2));
-        muxIO.setOutputPort(3, (uint8_t)muxIO.getInputPort(3));
+        // muxIO.setOutputPort(0, (uint8_t)muxIO.getInputPort(0));
+        // muxIO.setOutputPort(1, (uint8_t)muxIO.getInputPort(1));
+        // muxIO.setOutputPort(2, (uint8_t)muxIO.getInputPort(2));
+        // muxIO.setOutputPort(3, (uint8_t)muxIO.getInputPort(3));
+        for (uint8_t i = 0; i < 32; i++)
+        {
+            muxIO.setOutputBit(i, (bool)muxIO.getInputBit(i));
+        }
         muxIO.transfer();
         IO_task_runTime += (int32_t)micros() - (int32_t)current;
 

@@ -158,5 +158,5 @@ int ShiftIO::getInputBit(uint16_t bitAddress)
     if ((_buffer_in[byteAddress] & (0x01 << bitAddress)) == (0x01 << bitAddress))
         return 1;
     else
-        return -1;
+        return 0;
 }
