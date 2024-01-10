@@ -3,10 +3,14 @@
 
 #include "Arduino.h"
 
+#define DEBUG_SERIAL 1
+
 #define MEMBER_COUNT(A) (sizeof(A) / sizeof(A[0]))
 #define timeReachedMacro(current, last, duration) (((int32_t)current - (int32_t)last) >= (int32_t)duration)
 
+#if (DEBUG_SERIAL == 1)
 #define debugSerial Serial
+#endif
 #define I2C_SDA 33
 #define I2C_SCL 32
 #define BUTTON1 35

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PRIMARY EQUIPMENT SIMULATOR</title>
+    <link rel="stylesheet" type="text/css" href="SimulatorStyle.css">
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>PRIMARY EQUIPMENT SIMULATOR</h1>
+        <br><br>
+        <button type="button" onclick="wifiManager()">WiFi manager</button>
+        <br><br>
+        <button type="button" onclick="reloadpage()">Reload website</button>
+        <br>
+        <br>
+        <div id="serverMsg" class="msg">
+            <strong>Time server on: </strong>
+            <span id="tOn"> </span>
+            <span> Sec</span>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    function reloadpage() {
+        location.reload();
+    }
+
+    function wifiManager() {
+        location.replace("/wifimanager");
+    }
+
+    function update() {
+        var updateHTTP = new XMLHttpRequest();
+        updateHTTP.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                document.getElementById("serverMsg").innerHTML = this.responseText;
+            }
+        }
+        updateHTTP.open("GET", "/update", true);
+        updateHTTP.send();
+    }
+
+    setInterval(update, 1000);
+</script>
+
+</html>

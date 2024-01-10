@@ -4,14 +4,16 @@
 #include "WiFi.h"
 
 TaskHandle_t WIFI_TaskHandle;
+TaskHandle_t PES_TaskHandle;
 TaskHandle_t LCD_TaskHandle;
 TaskHandle_t IO_TaskHandle;
 
-float WIFI_task_useage_percent, LCD_task_useage_percent, IO_task_useage_percent, LOOP_task_useage_percent;
+float WIFI_task_useage_percent, PES_task_useage_percent, LCD_task_useage_percent, IO_task_useage_percent, LOOP_task_useage_percent;
 uint32_t LOOP_task_runTime = 0;
 
 void setup()
 {
+#if (DEBUG_SERIAL == 1)
   debugSerial.begin(115200);
   debugSerial.print("\r\n\r\n\r\n");
   debugSerial.printf("Model: %s\r\n", ESP.getChipModel());
@@ -63,7 +65,9 @@ void setup()
     ESP.restart();
     return;
   }
+#endif
   xTaskCreatePinnedToCore(WIFI_task_code, "WIFI_task", 10240, NULL, 10, &WIFI_TaskHandle, 1);
+  xTaskCreatePinnedToCore(PES_task_code, "PES_task", 5120, NULL, 10, &PES_TaskHandle, 1);
   xTaskCreatePinnedToCore(LCD_task_code, "LCD_task", 5120, NULL, 10, &LCD_TaskHandle, 1);
   xTaskCreatePinnedToCore(IO_Task_code, "IO_task", 5120, NULL, 10, &IO_TaskHandle, 1);
 }
@@ -74,20 +78,26 @@ void loop()
 
   uint32_t current = micros();
   WIFI_task_useage_percent = (WIFI_task_runTime / 1000000.0) * 100.0;
+  PES_task_useage_percent = (PES_task_runTime / 1000000.0) * 100.0;
   LCD_task_useage_percent = (LCD_task_runTime / 1000000.0) * 100.0;
   IO_task_useage_percent = (IO_task_runTime / 1000000.0) * 100.0;
   LOOP_task_useage_percent = ((LOOP_task_runTime + idleTime) / 1000000.0) * 100.0;
-  Serial.printf("\r\n\r\n\r\n");
-  Serial.printf("WIFI task runtime: %u uS\r\n", WIFI_task_runTime);
-  Serial.printf("LCD task runtime: %u uS\r\n", LCD_task_runTime);
-  Serial.printf("IO task runtime: %u uS\r\n", IO_task_runTime);
-  Serial.printf("LOOP task runtime: %u uS\r\n", LOOP_task_runTime + idleTime);
-  Serial.printf("WIFI task useage: %.2f%%\r\n", WIFI_task_useage_percent);
-  Serial.printf("LCD task useage: %.2f%%\r\n", LCD_task_useage_percent);
-  Serial.printf("IO task useage: %.2f%%\r\n", IO_task_useage_percent);
-  Serial.printf("LOOP task useage: %.2f%%\r\n", LOOP_task_useage_percent);
+#if (DEBUG_SERIAL == 1)
+  debugSerial.printf("\r\n\r\n\r\n");
+  debugSerial.printf("WIFI task runtime: %u uS\r\n", WIFI_task_runTime);
+  debugSerial.printf("PES task runtime: %u uS\r\n", PES_task_runTime);
+  debugSerial.printf("LCD task runtime: %u uS\r\n", LCD_task_runTime);
+  debugSerial.printf("IO task runtime: %u uS\r\n", IO_task_runTime);
+  debugSerial.printf("LOOP task runtime: %u uS\r\n", LOOP_task_runTime + idleTime);
+  debugSerial.printf("WIFI task useage: %.2f%%\r\n", WIFI_task_useage_percent);
+  debugSerial.printf("PES task useage: %.2f%%\r\n", PES_task_useage_percent);
+  debugSerial.printf("LCD task useage: %.2f%%\r\n", LCD_task_useage_percent);
+  debugSerial.printf("IO task useage: %.2f%%\r\n", IO_task_useage_percent);
+  debugSerial.printf("LOOP task useage: %.2f%%\r\n", LOOP_task_useage_percent);
+#endif
 
   WIFI_task_runTime = 0;
+  PES_task_runTime = 0;
   LCD_task_runTime = 0;
   IO_task_runTime = 0;
   LOOP_task_runTime = (int32_t)micros() - (int32_t)current;

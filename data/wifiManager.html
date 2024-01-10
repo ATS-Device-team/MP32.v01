@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WiFi manager</title>
+    <link rel="stylesheet" type="text/css" href="SimulatorStyle.css">
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>WiFi manager</h1>
+        <br>
+        <div id="ssidList"></div>
+        <div>
+            <label for="ssid">SSID:</label>
+            <input id="ssid" name="ssid" type="text" maxlength="32" autocorrect="off" autocapitalize="none">
+            <br>
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="password" maxlength="64">
+            <div id="inputStationMsg"></div>
+            <br>
+            <button type="button" onclick="wifi_connect()">Connect</button>
+            <br>
+            <br>
+            <button type="button" onclick="wifi_scan()">Scan</button>
+            <br>
+            <br>
+            <br>
+            <label for="APssid">Acesspoint SSID:</label>
+            <input id="APssid" name="APssid" type="text" maxlength="32" autocorrect="off" autocapitalize="none">
+            <br>
+            <label for="APpassword">Acesspoint password:</label>
+            <input id="APpassword" name="APpassword" type="password" maxlength="64">
+            <div id="inputAPMsg"></div>
+            <br>
+            <button type="button" onclick="wifiAP_config()">Acesspoint config</button>
+        </div>
+        <br>
+        <br>
+        <br>
+        <button type="button" onclick="gohome()">Home</button>
+        <br>
+        <br>
+        <button type="button" onclick="setDefault()">Default reset</button>
+        <br>
+        <br>
+        <br>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+        <form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>
+            <input type='file' name='update' id='file' onchange='sub(this)' style=display:none>
+            <label id='file-input' for='file'> Choose file...</label>
+            <br>
+            <input type='submit' class=btn value='Update'>
+            <br>
+            <br>
+            <div id='prg'></div>
+            <br>
+            <div id='prgbar'>
+                <div id='bar'></div>
+            </div>
+            <br>
+        </form>
+        <br>
+        <br>
+        <br>
+    </div>
+</body>
+
+<script type="text/javascript">
+    function gohome() {
+        location.replace("/");
+    }
+
+    function wifi_connect() {
+        var ssid = document.getElementById("ssid");
+        var password = document.getElementById("password");
+        var wificonnectHTTP = new XMLHttpRequest();
+        if (ssid.value.length < 1) {
+            document.getElementById("inputStationMsg").innerText = "Input SSID name";
+            return;
+        }
+        if (password.value.length >= 1 && password.value.length < 8) {
+            document.getElementById("inputStationMsg").innerText = "Password must more than 8 characters";
+            return;
+        }
+        document.getElementById("inputStationMsg").innerText = "";
+        wificonnectHTTP.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                document.getElementById("inputStationMsg").innerHTML = this.responseText;
+            }
+        }
+        wificonnectHTTP.open("POST", "/wificonnect", true);
+        wificonnectHTTP.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        wificonnectHTTP.send("ssid=" + ssid.value + "&password=" + password.value);
+    }
+
+    function wifi_scan() {
+        var wifiscanHTTP = new XMLHttpRequest();
+        wifiscanHTTP.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                document.getElementById("ssidList").innerHTML = this.responseText;
+            }
+        }
+        wifiscanHTTP.open("GET", "/wifiscan", true);
+        wifiscanHTTP.send();
+    }
+
+    function c(l) {
+        document.getElementById('ssid').value = l.innerText || l.textContent;
+        p = l.nextElementSibling.classList.contains('l');
+        document.getElementById('password').value = "";
+        document.getElementById('password').disabled = !p;
+        if (p) document.getElementById('password').focus();
+        else wifi_connect();
+    }
+
+    function wifiAP_config() {
+        var APssid = document.getElementById("APssid");
+        var APpassword = document.getElementById("APpassword");
+        var APwificonfigHTTP = new XMLHttpRequest();
+        if (APssid.value.length < 1) {
+            document.getElementById("inputAPMsg").innerText = "Input AP SSID name";
+            return;
+        }
+        if (APpassword.value.length >= 1 && APpassword.value.length < 8) {
+            document.getElementById("inputAPMsg").innerText = "AP password must more than 8 characters";
+            return;
+        }
+        document.getElementById("inputAPMsg").innerText = "";
+        APwificonfigHTTP.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                document.getElementById("inputAPMsg").innerHTML = this.responseText;
+            }
+        }
+        APwificonfigHTTP.open("POST", "/wifiapconfig", true);
+        APwificonfigHTTP.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        APwificonfigHTTP.send("APssid=" + APssid.value + "&APpassword=" + APpassword.value);
+    }
+
+    function setDefault() {
+        if (confirm("Press OK to set default")) {
+            var setDefaultHTTP = new XMLHttpRequest();
+            setDefaultHTTP.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    alert(this.responseText);
+                }
+            }
+            setDefaultHTTP.open("GET", "/setdefault", true);
+            setDefaultHTTP.send();
+        }
+    }
+
+</script>
+
+<script>
+    function sub(obj) {
+        var fileName = obj.value.split('\\\\');
+        document.getElementById('file-input').innerHTML = '   ' + fileName[fileName.length - 1];
+    };
+    $('form').submit(function (e) {
+        e.preventDefault();
+        var form = $('#upload_form')[0];
+        var data = new FormData(form);
+        $.ajax({
+            url: '/firmwareupdate',
+            type: 'POST',
+            data: data,
+            contentType: false,
+            processData: false,
+            xhr: function () {
+                var xhr = new window.XMLHttpRequest();
+                xhr.upload.addEventListener('progress', function (evt) {
+                    if (evt.lengthComputable) {
+                        var per = evt.loaded / evt.total;
+                        $('#prg').html('progress: ' + Math.round(per * 100) + '%');
+                        $('#bar').css('width', Math.round(per * 100) + '%');
+                    }
+                }, false);
+                return xhr;
+            },
+            success: function (d, s) {
+                console.log('success!')
+            },
+            error: function (a, b, c) {
+            }
+        });
+    });
+</script>
+
+</html>
