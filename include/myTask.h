@@ -1,6 +1,9 @@
 #include "main.h"
 
+#define WIFI_TASK_INTERVAL
+#define PES_TASK_INTERVAL
 #define LCD_TASK_INTERVAL 500
+#define IO_TASK_INTERVAL
 
 class systemSimulator
 {

@@ -12,38 +12,42 @@ void handle_wifiscan(AsyncWebServerRequest *request);
 void handle_wificonnect(AsyncWebServerRequest *request);
 void handle_wifiAPconfig(AsyncWebServerRequest *request);
 void handle_setDefault(AsyncWebServerRequest *request);
+const char *textHTML PROGMEM = "text/html";
+const char *textCSS PROGMEM = "text/css";
 
 void webserver_init(void)
 {
     webserver.onNotFound([](AsyncWebServerRequest *request)
-                         { request->send(SPIFFS, "/404error.html", "text/html"); });
+                         { request->send(SPIFFS, F("/404error.html"), textHTML); });
     webserver.on("/", [](AsyncWebServerRequest *request)
-                 { request->send(SPIFFS, "/home.html", "text/html"); });
+                 { if (!request->authenticate("admin", "150896"))
+                 return request->requestAuthentication();
+                    request->send(SPIFFS, F("/home.html"), textHTML); });
     webserver.on("/SimulatorStyle.css", [](AsyncWebServerRequest *request)
-                 { request->send(SPIFFS, "/SimulatorStyle.css", "text/css"); });
-    webserver.on("/update", [](AsyncWebServerRequest *request)
-                 { request->send(200, "text/html", updateResponse); });
+                 { request->send(SPIFFS, F("/SimulatorStyle.css"), textCSS); });
+    webserver.on("/update", HTTP_POST, [](AsyncWebServerRequest *request)
+                 { request->send(200, textHTML, updateResponse); });
     webserver.on("/wifimanager", handle_wifimanager);
-    webserver.on("/wifiscan", handle_wifiscan);
-    webserver.on("/wificonnect", handle_wificonnect);
-    webserver.on("/wifiapconfig", handle_wifiAPconfig);
-    webserver.on("/setdefault", handle_setDefault);
+    webserver.on("/wifiscan", HTTP_POST, handle_wifiscan);
+    webserver.on("/wificonnect", HTTP_POST, handle_wificonnect);
+    webserver.on("/wifiapconfig", HTTP_POST, handle_wifiAPconfig);
+    webserver.on("/setdefault", HTTP_POST, handle_setDefault);
     webserver.begin();
 }
 
-void webserver_process(void)
+void webserver_process(uint32_t tSec)
 {
-    updateResponse = "<strong>Time server on: </strong><span>";
-    updateResponse += String((uint32_t)(millis() / 1000));
-    updateResponse += " Sec</span>";
+    updateResponse = F("<strong>Time server on: </strong><span>");
+    updateResponse += String(tSec);
+    updateResponse += F(" Sec</span>");
     if (WiFi.status() == WL_CONNECTED)
     {
-        updateResponse += "<br><strong>Connected to: </strong><span>";
+        updateResponse += F("<br><strong>Connected to: </strong><span>");
         updateResponse += WiFi.SSID();
-        updateResponse += "</span>";
-        updateResponse += "<br><strong>Local IP: </strong><span>";
+        updateResponse += F("</span>");
+        updateResponse += F("<br><strong>Local IP: </strong><span>");
         updateResponse += WiFi.localIP().toString();
-        updateResponse += "</span>";
+        updateResponse += F("</span>");
     }
 }
 
@@ -55,10 +59,12 @@ bool webserver_isWifiScanning(void)
 void handle_wifimanager(AsyncWebServerRequest *request)
 {
     String htmlWEB, tempString;
-    File file = SPIFFS.open("/wifiManager.html");
+    File file = SPIFFS.open(F("/wifiManager.html"));
     char *tempChar;
     uint8_t wifiPercent;
 
+    if (!request->authenticate("admin", "150896"))
+        return request->requestAuthentication();
     while (file.available())
         htmlWEB += (char)file.read();
     tempChar = strstr(htmlWEB.begin(), "<div id=\"inputStationMsg\"></div>") + 26;
@@ -66,20 +72,20 @@ void handle_wifimanager(AsyncWebServerRequest *request)
     htmlWEB.remove(htmlWEB.length() - tempString.length());
     if (WiFi.status() == WL_CONNECTED)
     {
-        htmlWEB += "<strong>Connected </strong>to ";
+        htmlWEB += F("<strong>Connected </strong>to ");
         htmlWEB += WiFi.SSID();
-        htmlWEB += "<br><strong>Signal streng: </strong>";
+        htmlWEB += F("<br><strong>Signal streng: </strong>");
         wifiPercent = map(WiFi.RSSI(), -100, -50, 0, 100);
         if (wifiPercent > 100)
             wifiPercent = 100;
         htmlWEB += String(wifiPercent);
-        htmlWEB += "\%<br><strong>Local IP:</strong> ";
+        htmlWEB += F("\%<br><strong>Local IP:</strong> ");
         htmlWEB += WiFi.localIP().toString();
     }
     else
-        htmlWEB += "<strong>Not connected</strong>";
+        htmlWEB += F("<strong>Not connected</strong>");
     htmlWEB += tempString;
-    request->send(200, "text/html", htmlWEB);
+    request->send(200, textHTML, htmlWEB);
     file.close();
     htmlWEB.end();
 }
@@ -89,6 +95,7 @@ void handle_wifiscan(AsyncWebServerRequest *request)
     uint8_t numbsAP = 0;
     String webserverResponse;
 
+    wifiScanning = 1;
     numbsAP = WiFi.scanNetworks();
     if (numbsAP)
     {
@@ -102,27 +109,34 @@ void handle_wifiscan(AsyncWebServerRequest *request)
             if (wifiPercent > 100)
                 wifiPercent = 100;
             wifiLevel = map(wifiPercent, 0, 100, 1, 4);
-            webserverResponse += "<div><a onclick='c(this)'>";
+            webserverResponse += F("<div><a onclick='c(this)'>");
             webserverResponse += WiFi.SSID(countAP);
-            webserverResponse += "</a><div role='img' aria-label ='";
+            for (uint8_t scanWifi = 0; scanWifi < WIFI_BUF_NUMBS; scanWifi++)
+                if (WiFi.SSID(countAP) == wifiInfor_list[scanWifi].ssid)
+                {
+                    webserverResponse += F(" (Saved)");
+                    break;
+                }
+            webserverResponse += F("</a><div role='img' aria-label ='");
             webserverResponse += String(wifiPercent);
-            webserverResponse += "\%' title='";
+            webserverResponse += F("\%' title='");
             webserverResponse += String(wifiPercent);
-            webserverResponse += "\%' class='q q-";
+            webserverResponse += F("\%' class='q q-");
             webserverResponse += String(wifiLevel);
             if (WiFi.encryptionType(countAP) != WIFI_AUTH_OPEN)
-                webserverResponse += " l '></div><div class='q h'>";
+                webserverResponse += F(" l '></div><div class='q h'>");
             else
-                webserverResponse += "  '></div><div class='q h'>";
+                webserverResponse += F("  '></div><div class='q h'>");
             webserverResponse += String(wifiPercent);
-            webserverResponse += "\%</div></div>";
+            webserverResponse += F("\%</div></div>");
         }
     }
     else
     {
-        webserverResponse = "No networks found";
+        webserverResponse = F("No networks found");
     }
-    request->send(200, "text/html", webserverResponse);
+    request->send(200, textHTML, webserverResponse);
+    wifiScanning = 0;
 }
 
 void handle_wificonnect(AsyncWebServerRequest *request)
@@ -133,20 +147,20 @@ void handle_wificonnect(AsyncWebServerRequest *request)
     if (wifi_connect(request->arg("ssid"), request->arg("password")))
     {
         wifi_saveInfor();
-        webserverResponse = "<strong>Connected </strong>to ";
+        webserverResponse = F("<strong>Connected </strong>to ");
         webserverResponse += WiFi.SSID();
-        webserverResponse += "<br><strong>Signal streng: </strong>";
+        webserverResponse += F("<br><strong>Signal streng: </strong>");
         wifiPercent = map(WiFi.RSSI(), -100, -50, 0, 100);
         if (wifiPercent > 100)
             wifiPercent = 100;
         webserverResponse += String(wifiPercent);
-        webserverResponse += "\%<br><strong>Local IP:</strong> ";
+        webserverResponse += F("\%<br><strong>Local IP:</strong> ");
         webserverResponse += WiFi.localIP().toString();
     }
     else
-        webserverResponse = "<strong>Connect failed</strong>";
+        webserverResponse = F("<strong>Connect failed</strong>");
 
-    request->send(200, "text/html", webserverResponse);
+    request->send(200, textHTML, webserverResponse);
 }
 
 void handle_wifiAPconfig(AsyncWebServerRequest *request)
@@ -156,16 +170,16 @@ void handle_wifiAPconfig(AsyncWebServerRequest *request)
     if (wifi_setAP(request->arg("APssid"), request->arg("APpassword")))
     {
         wifi_saveInfor();
-        reponseHTML = "Acesspoint config successful";
+        reponseHTML = F("Acesspoint config successful");
     }
     else
-        reponseHTML = "Acesspoint config failed";
-    request->send(200, "text/html", reponseHTML);
+        reponseHTML = F("Acesspoint config failed");
+    request->send(200, textHTML, reponseHTML);
 }
 
 void handle_setDefault(AsyncWebServerRequest *request)
 {
     wifi_default();
     wifi_saveInfor();
-    request->send(200, "text/html", "Returned to default");
+    request->send(200, textHTML, F("Returned to default"));
 }

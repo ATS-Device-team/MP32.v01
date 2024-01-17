@@ -4,7 +4,7 @@
 #include "main.h"
 
 void webserver_init(void);
-void webserver_process(void);
+void webserver_process(uint32_t tSec);
 bool webserver_isWifiScanning(void);
 
 #endif

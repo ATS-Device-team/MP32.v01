@@ -39,7 +39,7 @@
                 document.getElementById("serverMsg").innerHTML = this.responseText;
             }
         }
-        updateHTTP.open("GET", "/update", true);
+        updateHTTP.open("POST", "/update", true);
         updateHTTP.send();
     }
 

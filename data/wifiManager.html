@@ -100,9 +100,16 @@
             if (this.readyState == 4 && this.status == 200) {
                 document.getElementById("ssidList").innerHTML = this.responseText;
             }
+            else {
+                document.getElementById("ssidList").innerHTML = "Scan failed";
+            }
         }
-        wifiscanHTTP.open("GET", "/wifiscan", true);
+        wifiscanHTTP.onerror = function () {
+            document.getElementById("ssidList").innerHTML = "Scan failed";
+        }
+        wifiscanHTTP.open("POST", "/wifiscan", true);
         wifiscanHTTP.send();
+        document.getElementById("ssidList").innerHTML = "Scanning...";
     }
 
     function c(l) {
@@ -111,7 +118,7 @@
         document.getElementById('password').value = "";
         document.getElementById('password').disabled = !p;
         if (p) document.getElementById('password').focus();
-        else wifi_connect();
+        // else wifi_connect();
     }
 
     function wifiAP_config() {
@@ -145,7 +152,7 @@
                     alert(this.responseText);
                 }
             }
-            setDefaultHTTP.open("GET", "/setdefault", true);
+            setDefaultHTTP.open("POST", "/setdefault", true);
             setDefaultHTTP.send();
         }
     }

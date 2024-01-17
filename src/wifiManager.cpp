@@ -1,11 +1,19 @@
 #include "wifiManager.h"
 #include "WiFi.h"
+#include "ETH.h"
+#include "ESP32Ping.h"
 #include "ArduinoJson.h"
 #include "SPIFFS.h"
+#include "ArduinoOTA.h"
 
-#define WIFI_BUF_NUMBS 10
+void WiFi_Event(WiFiEvent_t event);
+void onStart_OTAHandle(void);
+void onEnd_OTAHandle(void);
+void onProcess_OTAHandle(unsigned int progress, unsigned int total);
+void onError_OTAHandle(ota_error_t error);
 
-const char *name_wifiInfor PROGMEM = "/WIFI_infor.js";
+const char *DNS_localName PROGMEM = "esp32simulator";
+const char *name_wifiInfor PROGMEM = "/WIFI_infor.json";
 const char *charAP_WIFI PROGMEM = "AP_WIFI";
 const char *charWIFI PROGMEM = "WIFI";
 const char *charSSID PROGMEM = "SSID";
@@ -16,16 +24,76 @@ int8_t staWifiIndex = -1;
 String APssid;
 String APpassword;
 bool wifiConnecting = 0;
+bool eth_connected = 0;
+String OTA_type;
 
 void wifi_init(void)
 {
     WiFi.mode(WIFI_MODE_APSTA);
+    WiFi.setAutoConnect(false);
+    WiFi.onEvent(WiFi_Event);
     WiFi.softAP(APssid.c_str(), APpassword.c_str());
+    ETH.begin(0, 4);
+    ArduinoOTA.onStart(onStart_OTAHandle);
+    ArduinoOTA.onEnd(onEnd_OTAHandle);
+    ArduinoOTA.onProgress(onProcess_OTAHandle);
+    ArduinoOTA.onError(onError_OTAHandle);
+    ArduinoOTA.setRebootOnSuccess(true);
+    ArduinoOTA.setHostname(DNS_localName);
+    ArduinoOTA.setPassword("tIQMv0VEk3");
+    ArduinoOTA.begin();
 #if (DEBUG_SERIAL == 1)
     debugSerial.println();
     debugSerial.printf("AP SSID: %s\r\n", APssid.c_str());
     debugSerial.printf("AP Password: %s\r\n", APpassword.c_str());
 #endif
+}
+
+void WiFi_Event(WiFiEvent_t event)
+{
+    switch (event)
+    {
+    case ARDUINO_EVENT_ETH_START:
+        Serial.println("ETH Started");
+        // set eth hostname here
+        ETH.setHostname("esp32-ethernet");
+        break;
+    case ARDUINO_EVENT_ETH_CONNECTED:
+        Serial.println("ETH Connected");
+        break;
+    case ARDUINO_EVENT_ETH_GOT_IP:
+        Serial.print("ETH MAC: ");
+        Serial.print(ETH.macAddress());
+        Serial.print(", IPv4: ");
+        Serial.print(ETH.localIP());
+        if (ETH.fullDuplex())
+        {
+            Serial.print(", FULL_DUPLEX");
+        }
+        Serial.print(", ");
+        Serial.print(ETH.linkSpeed());
+        Serial.println("Mbps");
+        eth_connected = true;
+        break;
+    case ARDUINO_EVENT_ETH_DISCONNECTED:
+        Serial.println("ETH Disconnected");
+        eth_connected = false;
+        break;
+    case ARDUINO_EVENT_ETH_STOP:
+        Serial.println("ETH Stopped");
+        eth_connected = false;
+        break;
+    default:
+        break;
+    }
+}
+
+void wifi_process(void)
+{
+    uint8_t pingTick = 0;
+
+    ArduinoOTA.handle();
+    if (pingTick <)
 }
 
 void wifi_loadInfor(void)
@@ -59,7 +127,7 @@ void wifi_loadInfor(void)
     file.close();
 #if (DEBUG_SERIAL == 1)
     debugSerial.println();
-    debugSerial.println("Load wifi infor:");
+    debugSerial.println(F("Load wifi infor:"));
     serializeJsonPretty(jsdoc, debugSerial);
     debugSerial.println();
 #endif
@@ -89,7 +157,7 @@ void wifi_saveInfor(void)
     file.close();
 #if (DEBUG_SERIAL == 1)
     debugSerial.println();
-    debugSerial.println("Save wifi infor:");
+    debugSerial.println(F("Save wifi infor:"));
     serializeJsonPretty(jsdoc, debugSerial);
     debugSerial.println();
 #endif
@@ -102,58 +170,58 @@ int wifi_scan(void)
 
     networksNumb = WiFi.scanNetworks();
 #if (DEBUG_SERIAL == 1)
-    debugSerial.println("Scan done");
+    debugSerial.println(F("Scan done"));
     if (networksNumb == 0)
     {
-        debugSerial.println("no networks found");
+        debugSerial.println(F("no networks found"));
     }
     else
     {
         debugSerial.print(networksNumb);
-        debugSerial.println(" networks found");
-        debugSerial.println("Nr | SSID                             | RSSI | CH | Encryption");
+        debugSerial.println(F(" networks found"));
+        debugSerial.println(F("Nr | SSID                             | RSSI | CH | Encryption"));
         for (int i = 0; i < networksNumb; ++i)
         {
             // Print SSID and RSSI for each network found
             debugSerial.printf("%2d", i + 1);
-            debugSerial.print(" | ");
+            debugSerial.print(F(" | "));
             debugSerial.printf("%-32.32s", WiFi.SSID(i).c_str());
-            debugSerial.print(" | ");
+            debugSerial.print(F(" | "));
             debugSerial.printf("%4d", WiFi.RSSI(i));
-            debugSerial.print(" | ");
+            debugSerial.print(F(" | "));
             debugSerial.printf("%2d", WiFi.channel(i));
-            debugSerial.print(" | ");
+            debugSerial.print(F(" | "));
             switch (WiFi.encryptionType(i))
             {
             case WIFI_AUTH_OPEN:
-                debugSerial.print("open");
+                debugSerial.print(F("open"));
                 break;
             case WIFI_AUTH_WEP:
-                debugSerial.print("WEP");
+                debugSerial.print(F("WEP"));
                 break;
             case WIFI_AUTH_WPA_PSK:
-                debugSerial.print("WPA");
+                debugSerial.print(F("WPA"));
                 break;
             case WIFI_AUTH_WPA2_PSK:
-                debugSerial.print("WPA2");
+                debugSerial.print(F("WPA2"));
                 break;
             case WIFI_AUTH_WPA_WPA2_PSK:
-                debugSerial.print("WPA+WPA2");
+                debugSerial.print(F("WPA+WPA2"));
                 break;
             case WIFI_AUTH_WPA2_ENTERPRISE:
-                debugSerial.print("WPA2-EAP");
+                debugSerial.print(F("WPA2-EAP"));
                 break;
             case WIFI_AUTH_WPA3_PSK:
-                debugSerial.print("WPA3");
+                debugSerial.print(F("WPA3"));
                 break;
             case WIFI_AUTH_WPA2_WPA3_PSK:
-                debugSerial.print("WPA2+WPA3");
+                debugSerial.print(F("WPA2+WPA3"));
                 break;
             case WIFI_AUTH_WAPI_PSK:
-                debugSerial.print("WAPI");
+                debugSerial.print(F("WAPI"));
                 break;
             default:
-                debugSerial.print("unknown");
+                debugSerial.print(F("unknown"));
             }
             debugSerial.println();
             delay(10);
@@ -163,7 +231,7 @@ int wifi_scan(void)
     if (networksNumb == 0)
         return -1;
 #if (DEBUG_SERIAL == 1)
-    debugSerial.println("WiFi available:");
+    debugSerial.println(F("WiFi available:"));
 #endif
     for (uint8_t savedWifiIndex = 0; savedWifiIndex < WIFI_BUF_NUMBS; savedWifiIndex++)
     {
@@ -214,7 +282,7 @@ bool wifi_setAP(String ssid, String password)
     {
 #if (DEBUG_SERIAL == 1)
         debugSerial.println();
-        debugSerial.println("AP config failed");
+        debugSerial.println(F("AP config failed"));
 #endif
         return false;
     }
@@ -222,12 +290,26 @@ bool wifi_setAP(String ssid, String password)
 
 bool wifi_connect(String ssid, String password)
 {
-    uint8_t wifiScanIndex;
-    int8_t slotToWriteIndex = -1, emptySlotIndex = -1;
-    uint32_t leastConnetcedCount = 0;
-    bool wifiSaved = 0;
+    int savedSlot = -1, emptySlot = -1, leastConnectedSlot = 0, notSavedSlot;
 
     wifiConnecting = 1;
+    for (uint8_t scanIndex = 0; scanIndex < WIFI_BUF_NUMBS; scanIndex++)
+    {
+        if (wifiInfor_list[scanIndex].ssid.length() == 0)
+        {
+            if (emptySlot < 0)
+                emptySlot = scanIndex;
+            continue;
+        }
+        if (wifiInfor_list[scanIndex].connectedCount < wifiInfor_list[leastConnectedSlot].connectedCount)
+            leastConnectedSlot = scanIndex;
+        if (ssid == wifiInfor_list[scanIndex].ssid)
+        {
+            savedSlot = scanIndex;
+            if (password == "")
+                password = wifiInfor_list[savedSlot].password;
+        }
+    }
     WiFi.begin(ssid.c_str(), password.c_str());
     if (WiFi.waitForConnectResult(10000) != WL_CONNECTED)
     {
@@ -235,50 +317,40 @@ bool wifi_connect(String ssid, String password)
         return false;
     }
     WiFi.setAutoReconnect(true);
-    for (wifiScanIndex = 0; wifiScanIndex < WIFI_BUF_NUMBS; wifiScanIndex++)
+    if (savedSlot >= 0)
     {
-        if (wifiInfor_list[wifiScanIndex].ssid.length() == 0)
-        {
-            if (emptySlotIndex < 0)
-                emptySlotIndex = wifiScanIndex;
-            continue;
-        }
-        if (wifiInfor_list[wifiScanIndex].ssid == ssid)
-        {
-            staWifiIndex = wifiScanIndex;
-            wifiInfor_list[wifiScanIndex].connectedCount += 1;
-            wifiInfor_list[wifiScanIndex].available = true;
-            wifiSaved = 1;
-            break;
-        }
-        else
-        {
-            if (wifiInfor_list[wifiScanIndex].connectedCount < leastConnetcedCount)
-            {
-                leastConnetcedCount = wifiInfor_list[wifiScanIndex].connectedCount;
-                slotToWriteIndex = wifiScanIndex;
-            }
-        }
+        if (wifiInfor_list[savedSlot].password != password)
+            wifiInfor_list[savedSlot].password = password;
+        wifiInfor_list[savedSlot].connectedCount += 1;
+        staWifiIndex = savedSlot;
+        wifiInfor_list[savedSlot].available = 1;
     }
-    if (!wifiSaved)
+    else
     {
-        if (emptySlotIndex >= 0)
-            slotToWriteIndex = emptySlotIndex;
-        wifiInfor_list[slotToWriteIndex].ssid = ssid;
-        wifiInfor_list[slotToWriteIndex].password = password;
-        wifiInfor_list[slotToWriteIndex].connectedCount = 1;
-        wifiInfor_list[slotToWriteIndex].available = true;
-        staWifiIndex = slotToWriteIndex;
+        notSavedSlot = (emptySlot >= 0) ? emptySlot : leastConnectedSlot;
+        wifiInfor_list[notSavedSlot].ssid = ssid;
+        wifiInfor_list[notSavedSlot].password = password;
+        wifiInfor_list[notSavedSlot].connectedCount = 1;
+        wifiInfor_list[notSavedSlot].available = 1;
+        staWifiIndex = notSavedSlot;
     }
-    wifiConnecting = 0;
 #if (DEBUG_SERIAL == 1)
     debugSerial.println();
     debugSerial.printf("Connected to SSID: %s\r\n", ssid.c_str());
     debugSerial.printf("IP: %s\r\n", WiFi.localIP().toString().c_str());
-    debugSerial.printf("Slot: %u\r\n", staWifiIndex);
+    debugSerial.printf("Current slot: %d\r\n", staWifiIndex);
+    debugSerial.printf("Empty slot: %d\r\n", emptySlot);
+    debugSerial.printf("Least connected slot: %d\r\n", leastConnectedSlot);
 #endif
-
     return true;
+}
+
+bool wifi_delete(String ssid)
+{
+    for (uint8_t wifiScan = 0; wifiScan < WIFI_BUF_NUMBS; wifiScan++)
+    {
+    }
+    return false;
 }
 
 void wifi_default(void)
@@ -306,4 +378,59 @@ void wifi_default(void)
 bool wifi_isConnecting(void)
 {
     return wifiConnecting;
+}
+
+void onStart_OTAHandle(void)
+{
+    if (ArduinoOTA.getCommand() == U_FLASH)
+    {
+        OTA_type = F("sketch");
+    }
+    else
+    {
+        OTA_type = F("filesystem");
+        SPIFFS.end();
+    }
+#if (DEBUG_SERIAL == 1)
+    debugSerial.println("Start updating " + OTA_type);
+#endif
+}
+
+void onEnd_OTAHandle(void)
+{
+    if (OTA_type == F("filesystem"))
+        SPIFFS.begin();
+#if (DEBUG_SERIAL == 1)
+    debugSerial.println(F("End update"));
+#endif
+}
+
+void onProcess_OTAHandle(unsigned int progress, unsigned int total)
+{
+    static unsigned int lastPercent = 0;
+    unsigned int percent = (progress / (total / 100));
+    if (percent != lastPercent)
+    {
+#if (DEBUG_SERIAL == 1)
+        debugSerial.printf("Progress: %u%%\r\n", percent);
+#endif
+        lastPercent = percent;
+    }
+}
+
+void onError_OTAHandle(ota_error_t error)
+{
+#if (DEBUG_SERIAL == 1)
+    debugSerial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR)
+        debugSerial.println(F("Auth Failed"));
+    else if (error == OTA_BEGIN_ERROR)
+        debugSerial.println(F("Begin Failed"));
+    else if (error == OTA_CONNECT_ERROR)
+        debugSerial.println(F("Connect Failed"));
+    else if (error == OTA_RECEIVE_ERROR)
+        debugSerial.println(F("Receive Failed"));
+    else if (error == OTA_END_ERROR)
+        debugSerial.println(F("End Failed"));
+#endif
 }

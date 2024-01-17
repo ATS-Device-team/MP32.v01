@@ -29,7 +29,7 @@ void WIFI_task_code(void *pvParameters)
 {
     (void)pvParameters;
     int bestWifi;
-    uint32_t scanWifi_Tick = 0;
+    uint32_t tSec = 0;
 
     esp_task_wdt_init(30, true);
     wifi_loadInfor();
@@ -43,17 +43,15 @@ void WIFI_task_code(void *pvParameters)
     for (;;)
     {
         uint32_t current = micros();
-        // if ((WiFi.status() != WL_CONNECTED) && !wifi_isConnecting())
-        // {
-        //     bestWifi = wifi_scan();
-        //     if (bestWifi >= 0)
-        //         if (wifi_connect(wifiInfor_list[bestWifi].ssid.c_str(), wifiInfor_list[bestWifi].password.c_str()))
-        //             wifi_saveInfor();
-        // }
-        webserver_process();
+        wifi_process();
+        if (tSec != (uint32_t)(millis() / 1000))
+        {
+            tSec = (uint32_t)(millis() / 1000);
+            webserver_process(tSec);
+        }
         WIFI_task_runTime += (int32_t)micros() - (int32_t)current;
 
-        delay(500);
+        delay(100);
     }
 }
 
@@ -161,24 +159,18 @@ void IO_Task_code(void *pvParameters)
             delay(200);
             while (digitalRead(BUTTON1) == 0)
                 delay(10);
-            wifi_default();
-            wifi_saveInfor();
         }
         if (digitalRead(BUTTON2) == 0)
         {
             delay(200);
             while (digitalRead(BUTTON2) == 0)
                 delay(10);
-            if (wifi_connect("ATS106", "66668888"))
-                wifi_saveInfor();
         }
         if (digitalRead(BUTTON4) == 0)
         {
             delay(200);
             while (digitalRead(BUTTON4) == 0)
                 delay(10);
-            if (wifi_connect("ATS-206", "Atsjsc123"))
-                wifi_saveInfor();
         }
         if (digitalRead(BUTTON3) == 0)
         {
